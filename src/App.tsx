@@ -7,10 +7,11 @@ import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { DataSources } from './components/DataSources';
 import { Navbar } from './components/layout/Navbar';
 import { CitizenReportModal } from './components/citizen/CitizenReportModal';
+import { ComplaintStatus } from './components/citizen/ComplaintStatus';
 import { LanguageProvider, useLanguage } from './lib/LanguageContext';
-import { LayoutDashboard, Database, MapPin, Home, Building2, Vote, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Database, MapPin, Home, Building2, Vote, Sparkles, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 
-type Tab = 'home' | 'dashboard' | 'builds' | 'voting' | 'analytics' | 'sources';
+type Tab = 'home' | 'dashboard' | 'builds' | 'voting' | 'analytics' | 'sources' | 'tracking';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
@@ -56,6 +57,13 @@ function AppContent() {
       rawLabel: 'Public Voting',
       badge: t('Referendum'),
       icon: <Vote className="w-4 h-4" /> 
+    },
+    { 
+      id: 'tracking', 
+      label: t('Track Status'), 
+      rawLabel: 'Track Status',
+      badge: t('Live Updates'),
+      icon: <Search className="w-4 h-4" /> 
     },
     { 
       id: 'analytics', 
@@ -178,6 +186,11 @@ function AppContent() {
           )}
           {activeTab === 'voting' && (
             <CivicVoting onNavigateToMap={handleNavigateToCity} />
+          )}
+          {activeTab === 'tracking' && (
+            <div className="p-6">
+              <ComplaintStatus />
+            </div>
           )}
           {activeTab === 'analytics' && (
             <AnalyticsPanel />

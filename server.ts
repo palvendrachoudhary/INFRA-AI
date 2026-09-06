@@ -123,9 +123,10 @@ async function startServer() {
   app.post("/api/submit-complaint", async (req, res) => {
     try {
       const webhookUrl = process.env.COMPLAINT_WEBHOOK_URL;
+      console.log(`[Proxy] Received complaint submission request. Payload size: ${JSON.stringify(req.body).length} bytes`);
       
       if (!webhookUrl || webhookUrl.includes("PASTE_YOUR_VIASOCKET_WEBHOOK_URL_HERE")) {
-        console.warn("Webhook URL not configured in server environment. Payload:", req.body);
+        console.warn("[Proxy] Webhook URL not configured. Data received:", req.body);
         return res.json({ 
           status: "simulated_success", 
           message: "Webhook not configured on server, simulating success.",
@@ -133,23 +134,33 @@ async function startServer() {
         });
       }
 
+      console.log(`[Proxy] Forwarding to webhook: ${webhookUrl}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(req.body),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`[Proxy] Webhook failed with status ${response.status}:`, errorText);
         throw new Error(`Webhook responded with status ${response.status}: ${errorText}`);
       }
 
+      console.log("[Proxy] Webhook submission successful");
       res.json({ status: "success" });
-    } catch (error) {
-      console.error("Webhook submission error:", error);
-      res.status(500).json({ error: error.message });
+    } catch (error: any) {
+      console.error("[Proxy] Webhook submission error:", error);
+      res.status(500).json({ error: error.name === 'AbortError' ? 'Webhook timeout (30s)' : error.message });
     }
   });
 

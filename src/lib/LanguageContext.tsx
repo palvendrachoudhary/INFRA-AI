@@ -172,8 +172,22 @@ export const TRANSLATIONS: Record<string, Partial<Record<Language, string>>> = {
     Bengali: "জনসাধারণের ভোট",
     Gujarati: "જાહેર મતદાન",
     Kannada: "ಸಾರ್ವಜನಿಕ ಮತದಾನ",
-    Punjabi: "ਜਨਤਕ ਵੋਟਿੰਗ",
+    Punjabi: "ਜਨਤਕ वੋਟਿੰਗ",
     Malayalam: "പൊതു വോട്ടെടുപ്പ്",
+  },
+  "Track Status": {
+    Hindi: "शिकायत की स्थिति",
+    Marathi: "तक्रारीची स्थिती",
+    Tamil: "புகார் நிலை",
+    Telugu: "ఫిర్యాదు స్థితి",
+    Bengali: "অভিযোগের স্থিতি",
+  },
+  "Live Updates": {
+    Hindi: "लाइव अपडेट",
+    Marathi: "थेट अपडेट",
+    Tamil: "நேரடி அறிவிப்புகள்",
+    Telugu: "प्रत्यక్ష నవీకరణలు",
+    Bengali: "লাইভ আপডেট",
   },
   "Policymaker": {
     Hindi: "नीति निर्माता",

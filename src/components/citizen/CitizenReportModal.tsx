@@ -44,24 +44,61 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({ isOpen, 
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fileInputRefs = {
-    photo: useRef<HTMLInputElement>(null),
-    video: useRef<HTMLInputElement>(null),
-    audio: useRef<HTMLInputElement>(null),
-    document: useRef<HTMLInputElement>(null),
-  };
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
+
+  const [urls, setUrls] = useState<Record<string, string>>({
+    photo: "",
+    video: "",
+    audio: "",
+    document: ""
+  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (type: keyof FileState) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (type: keyof FileState) => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
+    if (!file) return;
+
+    if (file.size > 15 * 1024 * 1024) { // 15MB Limit
+      setError(`${type.charAt(0).toUpperCase() + type.slice(1)} file is too large. Max limit is 15MB.`);
+      return;
+    }
+
+    setError(null);
     setFiles(prev => ({ ...prev, [type]: file }));
+    setUploadProgress(prev => ({ ...prev, [type]: 0 }));
+
+    try {
+      console.log(`Starting immediate upload for ${type}: ${file.name}`);
+      const folderMap: Record<string, string> = {
+        photo: "complaints/photos",
+        video: "complaints/videos",
+        audio: "complaints/audios",
+        document: "complaints/documents"
+      };
+      
+      const downloadUrl = await uploadFile(file, folderMap[type] || `complaints/${type}s`, (p) => {
+        setUploadProgress(prev => ({ ...prev, [type]: Math.round(p) }));
+      });
+      
+      setUrls(prev => ({ ...prev, [type]: downloadUrl }));
+      console.log(`Upload complete for ${type}: ${downloadUrl}`);
+    } catch (err: any) {
+      console.error(`Upload error for ${type}:`, err);
+      setError(`Failed to upload ${type}: ${err.message}`);
+      setUploadProgress(prev => ({ ...prev, [type]: 0 }));
+      setFiles(prev => ({ ...prev, [type]: null }));
+    }
   };
 
   const validateForm = () => {
@@ -83,35 +120,35 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({ isOpen, 
     setError(null);
 
     try {
-      // 1. Upload files first
-      const uploadPromises = [
-        files.photo ? uploadFile(files.photo, "photos") : Promise.resolve(""),
-        files.video ? uploadFile(files.video, "videos") : Promise.resolve(""),
-        files.audio ? uploadFile(files.audio, "audio") : Promise.resolve(""),
-        files.document ? uploadFile(files.document, "documents") : Promise.resolve(""),
-      ];
-
-      const [photoUrl, videoUrl, audioUrl, documentUrl] = await Promise.all(uploadPromises);
+      // 1. Wait for any ongoing uploads if necessary 
+      // (Though in this immediate-upload model, we check if we have urls for selected files)
+      const selectedTypes = Object.entries(files).filter(([_, file]) => file !== null).map(([type]) => type);
+      const missingUrls = selectedTypes.filter(type => !urls[type]);
       
-      const attachmentUrls = [photoUrl, videoUrl, audioUrl, documentUrl]
-        .filter(url => url !== "")
-        .join(",");
+      if (missingUrls.length > 0) {
+        throw new Error("Some files are still uploading. Please wait.");
+      }
 
-      // 2. Prepare JSON payload
+      const allUrls = Object.values(urls).filter(url => !!url);
+      const attachment_urls = allUrls.join(",");
+
+      // 2. Prepare JSON payload as per exact requested structure
       const payload = {
         submitted_at: new Date().toISOString(),
         name: form.fullName,
         email: form.email,
         phone: form.phone,
         complaint_text: form.complaint,
-        photo_url: photoUrl,
-        video_url: videoUrl,
-        audio_url: audioUrl,
-        document_url: documentUrl,
-        attachment_urls: attachmentUrls
+        photo_url: urls.photo || "",
+        video_url: urls.video || "",
+        audio_url: urls.audio || "",
+        document_url: urls.document || "",
+        attachment_urls: attachment_urls
       };
 
-      // 3. Send to Server Proxy (bypasses CORS and is more reliable)
+      console.log("Sending final payload to webhook proxy:", payload);
+
+      // 3. Send to Server Proxy
       const response = await fetch("/api/submit-complaint", {
         method: "POST",
         headers: {
@@ -238,41 +275,52 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({ isOpen, 
                     />
                   </div>
 
-                  {/* Upload Section */}
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Evidence Attachments</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {/* Upload Section - Restructured for easier targeting and better UX */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <FileButton 
+                        id="photo-upload-btn"
                         icon={<Camera className="w-6 h-6" />} 
                         label="Photo" 
                         file={files.photo} 
-                        onClick={() => fileInputRefs.photo.current?.click()} 
+                        progress={uploadProgress.photo}
+                        onClick={() => photoInputRef.current?.click()} 
                       />
                       <FileButton 
+                        id="video-upload-btn"
                         icon={<Video className="w-6 h-6" />} 
                         label="Video" 
                         file={files.video} 
-                        onClick={() => fileInputRefs.video.current?.click()} 
+                        progress={uploadProgress.video}
+                        onClick={() => videoInputRef.current?.click()} 
                       />
                       <FileButton 
+                        id="audio-upload-btn"
                         icon={<Music className="w-6 h-6" />} 
                         label="Audio" 
                         file={files.audio} 
-                        onClick={() => fileInputRefs.audio.current?.click()} 
+                        progress={uploadProgress.audio}
+                        onClick={() => audioInputRef.current?.click()} 
                       />
                       <FileButton 
+                        id="document-upload-btn"
                         icon={<FileText className="w-6 h-6" />} 
                         label="Document" 
                         file={files.document} 
-                        onClick={() => fileInputRefs.document.current?.click()} 
+                        progress={uploadProgress.document}
+                        onClick={() => documentInputRef.current?.click()} 
                       />
                     </div>
-
+                    
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                      Evidence Attachments (Optional)
+                    </p>
+ 
                     {/* Hidden Inputs */}
-                    <input type="file" ref={fileInputRefs.photo} accept="image/*" className="hidden" onChange={handleFileChange("photo")} />
-                    <input type="file" ref={fileInputRefs.video} accept="video/*" className="hidden" onChange={handleFileChange("video")} />
-                    <input type="file" ref={fileInputRefs.audio} accept="audio/*" className="hidden" onChange={handleFileChange("audio")} />
-                    <input type="file" ref={fileInputRefs.document} accept=".pdf,.doc,.docx" className="hidden" onChange={handleFileChange("document")} />
+                    <input type="file" ref={photoInputRef} accept="image/*" className="hidden" onChange={handleFileChange("photo")} />
+                    <input type="file" ref={videoInputRef} accept="video/*" className="hidden" onChange={handleFileChange("video")} />
+                    <input type="file" ref={audioInputRef} accept="audio/*" className="hidden" onChange={handleFileChange("audio")} />
+                    <input type="file" ref={documentInputRef} accept=".pdf,.doc,.docx" className="hidden" onChange={handleFileChange("document")} />
                   </div>
 
                   {error && (
@@ -341,21 +389,37 @@ const InputField = ({ label, icon, value, onChange, name, placeholder, type = "t
   </div>
 );
 
-const FileButton = ({ icon, label, file, onClick }: any) => (
+const FileButton = ({ icon, label, file, onClick, id, progress }: any) => (
   <button 
+    id={id}
     type="button"
     onClick={onClick}
-    className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed transition-all ${
+    className={`flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border-2 transition-all duration-150 border-b-[6px] active:border-b-[2px] active:translate-y-[4px] shadow-2xl relative overflow-hidden group ${
       file 
-        ? "bg-neon-green/10 border-neon-green text-neon-green" 
-        : "bg-white/5 border-white/10 text-slate-500 hover:border-white/30 hover:text-slate-300"
+        ? "bg-neon-green/5 border-neon-green/40 text-neon-green border-b-neon-green shadow-[0_10px_20px_-10px_rgba(0,255,135,0.3)]" 
+        : "bg-[#1a1b26] border-white/5 text-slate-500 hover:border-white/20 hover:text-slate-300 border-b-[#2a2b36] hover:bg-[#1e1f2a]"
     }`}
   >
-    <div className="w-6 h-6 flex items-center justify-center">
-      {file ? <CheckCircle2 className="w-6 h-6" /> : icon}
+    {/* Progress Bar Background */}
+    {progress !== undefined && progress > 0 && progress < 100 && (
+      <div 
+        className="absolute bottom-0 left-0 h-1 bg-neon-green/60 transition-all duration-300 z-20" 
+        style={{ width: `${progress}%` }}
+      />
+    )}
+
+    <div className={`w-10 h-10 flex items-center justify-center bg-black/60 rounded-full mb-1 relative z-10 transition-transform group-hover:scale-110 ${file ? 'text-neon-green' : 'text-slate-400'}`}>
+      {file ? (
+        progress === 100 ? <CheckCircle2 className="w-6 h-6 animate-pulse" /> : <Loader2 className="w-6 h-6 animate-spin" />
+      ) : icon}
     </div>
-    <span className="text-[10px] font-bold uppercase tracking-tight truncate w-full text-center px-1">
-      {file ? file.name : label}
-    </span>
+    <div className="flex flex-col items-center gap-0.5 relative z-10 w-full">
+      <span className="text-[10px] font-black uppercase tracking-[0.15em] truncate w-full text-center px-1">
+        {file ? (progress === 100 ? "Attached" : `${progress || 0}%`) : label}
+      </span>
+      {file && (
+        <span className="text-[9px] font-mono opacity-40 truncate w-full px-1 text-center">{file.name}</span>
+      )}
+    </div>
   </button>
 );
