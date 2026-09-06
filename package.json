@@ -46,6 +46,7 @@
     "@types/multer": "^2.2.0",
     "@types/node": "^22.14.0",
     "@types/pg": "^8.23.1",
+    "@vercel/node": "^12.0.1",
     "autoprefixer": "^10.4.21",
     "drizzle-kit": "^0.31.10",
     "esbuild": "^0.25.0",

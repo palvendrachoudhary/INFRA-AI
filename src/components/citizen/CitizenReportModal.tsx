@@ -171,11 +171,31 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({ isOpen, 
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Submission failed: ${response.statusText}`);
+        let errorMessage = `Submission failed: ${response.statusText}`;
+        try {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorData.detail || errorMessage;
+          } else {
+            const text = await response.text();
+            console.error("Non-JSON error response:", text.substring(0, 200));
+          }
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+        throw new Error(errorMessage);
       }
 
-      const result = await response.json();
+      let result: any = { status: "success" };
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          result = await response.json();
+        }
+      } catch (e) {
+        console.warn("Could not parse success response JSON:", e);
+      }
       if (result.status === "simulated_success") {
         console.info("Submission simulated (Webhook URL not set in Settings)");
       }
