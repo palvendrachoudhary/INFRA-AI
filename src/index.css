@@ -1,0 +1,171 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-obsidian: #0A0A0C;
+  --color-card-surface: #121216;
+  --color-neon-green: #00FF87;
+  --color-alert-red: #FF3B30;
+  --color-cyan-glow: #00E5FF;
+  
+  --color-gold: #C5A47E;
+  
+  --color-primary-50: rgba(197, 164, 126, 0.05);
+  --color-primary-100: rgba(197, 164, 126, 0.1);
+  --color-primary-500: #d6bc9f;
+  --color-primary-600: #C5A47E;
+  --color-primary-700: #b5926c;
+  --color-primary-900: rgba(197, 164, 126, 0.3);
+  
+  --color-surface-50: #f8fafc;
+  --color-surface-100: #f1f5f9;
+  --color-surface-800: #121212;
+  --color-surface-900: #0A0A0A;
+  --color-surface-sidebar: #070707;
+  
+  --font-display: "Georgia", "Times New Roman", serif;
+  --font-sans: "Inter", -apple-system, sans-serif;
+  
+  --animate-glow: glow 2s ease-in-out infinite alternate;
+  --animate-pulse-glow: pulseGlow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-radar-sweep: radarSweep 4s linear infinite;
+  --animate-pulse-subtle: pulseSubtle 3s ease-in-out infinite;
+  --animate-float: float 6s ease-in-out infinite;
+}
+
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 10px rgba(0, 255, 135, 0.2), 0 0 20px rgba(0, 255, 135, 0.2); }
+  to { box-shadow: 0 0 20px rgba(0, 255, 135, 0.6), 0 0 30px rgba(0, 255, 135, 0.4); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 12px #00FF87); }
+  50% { opacity: 0.5; filter: drop-shadow(0 0 3px #00FF87); }
+}
+
+@keyframes radarSweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@layer base {
+  body {
+    @apply bg-surface-50 text-slate-900 transition-colors duration-200 antialiased font-sans;
+  }
+  
+  .dark body {
+    @apply bg-surface-900 text-[#E0E0E0];
+  }
+}
+
+/* Glassmorphism Surface Utility */
+.glass-panel {
+  background: rgba(18, 18, 22, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel-hover:hover {
+  background: rgba(22, 22, 28, 0.85);
+  border-color: rgba(0, 255, 135, 0.3);
+  box-shadow: 0 0 25px -5px rgba(0, 255, 135, 0.15);
+}
+
+/* Leaflet Customizations for Dark Mode */
+.dark .leaflet-layer,
+.dark .leaflet-control-zoom-in,
+.dark .leaflet-control-zoom-out,
+.dark .leaflet-control-attribution {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+/* Ensure interactive overlays, markers, and popups maintain true neon colors without inversion */
+.dark .leaflet-overlay-pane,
+.dark .leaflet-marker-pane,
+.dark .leaflet-popup-pane,
+.dark .leaflet-pane > svg {
+  filter: none !important;
+}
+
+/* Tile layer dark filter when satellite mode is active */
+.dark .leaflet-tile-pane-satellite,
+.dark .leaflet-tile-pane-satellite .leaflet-layer {
+  filter: brightness(0.8) contrast(1.15) saturate(1.1) !important;
+}
+
+.leaflet-container {
+  z-index: 10;
+  width: 100% !important;
+  height: 100% !important;
+  background: #050508 !important;
+}
+
+/* MapDashboard Container Dimensions & Parent Sizing */
+.map-dashboard-container {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 0%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.map-container-wrapper {
+  width: 100%;
+  height: 100%;
+  flex: 1 1 0%;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.map-container-wrapper [data-testid="map-container"],
+.map-container-wrapper .gm-style,
+.map-container-wrapper .gm-style > div:first-child {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Visible, polished custom scrollbars */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 135, 0.6);
+}
+
+
