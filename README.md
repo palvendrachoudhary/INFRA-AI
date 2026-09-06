@@ -32,7 +32,7 @@ graph TD
     subgraph "🛡️ 2. Logic & Security Layer (Middleware)"
         Auth["Firebase Auth"]
         Proxy["Express.js Webhook Proxy"]
-        Storage["Firebase Storage (Evidence)"]
+        Storage["Cloudinary / Firebase Storage"]
     end
 
     subgraph "🧠 3. Intelligence Layer (AI Core)"
@@ -60,9 +60,9 @@ graph TD
 ## 🔄 Operational Flow: How it Works
 
 1. **Detection**: A citizen identifies an issue (e.g., a pothole or waterlogging) and uses the **Report Issue** portal.
-2. **Multimodal Upload**: The citizen uploads a photo or records a voice note in their native language (Hindi, Marathi, etc.).
+2. **Multimodal Upload**: The citizen uploads a photo or records a voice note. The app handles immediate background uploads to **Cloudinary** for high-performance media delivery.
 3. **AI Processing**: 
-   - **Firebase Storage** assigns a secure public URL to the evidence.
+   - **Cloudinary** (or Firebase) assigns a secure public URL to the evidence.
    - **Gemini 1.5 Pro** analyzes the transcript and image to determine category, urgency, and recommended civil fix.
 4. **Proxy & Deliver**: The **Express backend** proxies the validated payload to an external **Viasocket Webhook**, ensuring reliable delivery to government email systems.
 5. **Visualization**: The issue is instantly plotted as a **Hotspot** on the global dashboard, allowing administrators to see clusters of high-risk infrastructure.
@@ -76,8 +76,8 @@ graph TD
 - **Backend**: Node.js, Express.
 - **Cloud/AI**: 
   - **Gemini 1.5 Pro**: Deep analysis and document generation.
-  - **Gemini 3.1 Flash (Live)**: Real-time voice assistance.
-  - **Firebase**: Authentication & Storage for large media.
+  - **Cloudinary**: Primary high-performance media storage and optimization.
+  - **Firebase**: Authentication & secondary fallback storage.
 
 ---
 
@@ -103,15 +103,35 @@ Infra.AI is built with a "Global-Ready, Local-First" philosophy.
    npm install
    ```
 3. **Environment Variables**:
-   Create a `.env` file and add:
+   Create a `.env` file and add the following keys:
    ```env
+   # Core
    GEMINI_API_KEY="your_google_ai_studio_key"
    COMPLAINT_WEBHOOK_URL="your_viasocket_url"
+
+   # Cloudinary (Optional - Fallback to Firebase Storage if not set)
+   VITE_CLOUDINARY_CLOUD_NAME="your_cloud_name"
+   VITE_CLOUDINARY_UPLOAD_PRESET="your_unsigned_preset"
    ```
-4. **Run Dev Server**:
+4. **Cloudinary Setup**:
+   - Create an **Unsigned** upload preset in Cloudinary.
+   - Set the folder to `infra_citizen_reports`.
+   - Update your `.env` with the Cloud Name and Preset.
+
+5. **Run Dev Server**:
    ```bash
    npm run dev
    ```
+
+---
+
+## 🏗️ Submission Flow Logic
+
+The application uses an **Immediate Background Upload** strategy:
+1. Citizen selects a file (Photo/Video/Audio/Doc).
+2. The app immediately pushes the file to **Cloudinary** (or **Firebase Storage** if Cloudinary is unconfigured).
+3. The app retrieves the public **Secure Download URL**.
+4. On final submission, a clean JSON payload is sent to the `COMPLAINT_WEBHOOK_URL` containing only metadata and the extracted URLs.
 
 ---
 

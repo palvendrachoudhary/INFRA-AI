@@ -8,6 +8,7 @@ import {
   Music, CheckCircle2, AlertCircle, Loader2
 } from "lucide-react";
 import { uploadFile } from "../../lib/storage";
+import { uploadToCloudinary } from "../../lib/cloudinary";
 
 interface CitizenReportModalProps {
   isOpen: boolean;
@@ -80,16 +81,28 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({ isOpen, 
 
     try {
       console.log(`Starting immediate upload for ${type}: ${file.name}`);
-      const folderMap: Record<string, string> = {
-        photo: "complaints/photos",
-        video: "complaints/videos",
-        audio: "complaints/audios",
-        document: "complaints/documents"
-      };
       
-      const downloadUrl = await uploadFile(file, folderMap[type] || `complaints/${type}s`, (p) => {
-        setUploadProgress(prev => ({ ...prev, [type]: Math.round(p) }));
-      });
+      const isCloudinaryConfigured = !!import.meta.env.VITE_CLOUDINARY_CLOUD_NAME && !!import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+      
+      let downloadUrl = "";
+      
+      if (isCloudinaryConfigured) {
+        console.log("[Storage] Using Cloudinary for upload");
+        downloadUrl = await uploadToCloudinary(file, (p) => {
+          setUploadProgress(prev => ({ ...prev, [type]: Math.round(p) }));
+        });
+      } else {
+        console.log("[Storage] Cloudinary not configured, falling back to Firebase Storage");
+        const folderMap: Record<string, string> = {
+          photo: "complaints/photos",
+          video: "complaints/videos",
+          audio: "complaints/audios",
+          document: "complaints/documents"
+        };
+        downloadUrl = await uploadFile(file, folderMap[type] || `complaints/${type}s`, (p) => {
+          setUploadProgress(prev => ({ ...prev, [type]: Math.round(p) }));
+        });
+      }
       
       setUrls(prev => ({ ...prev, [type]: downloadUrl }));
       console.log(`Upload complete for ${type}: ${downloadUrl}`);
@@ -120,13 +133,13 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({ isOpen, 
     setError(null);
 
     try {
-      // 1. Wait for any ongoing uploads if necessary 
-      // (Though in this immediate-upload model, we check if we have urls for selected files)
-      const selectedTypes = Object.entries(files).filter(([_, file]) => file !== null).map(([type]) => type);
-      const missingUrls = selectedTypes.filter(type => !urls[type]);
+      // 1. Wait for any ongoing uploads
+      const uploadingTypes = Object.entries(files)
+        .filter(([_, file]) => file !== null)
+        .filter(([type]) => !urls[type]);
       
-      if (missingUrls.length > 0) {
-        throw new Error("Some files are still uploading. Please wait.");
+      if (uploadingTypes.length > 0) {
+        throw new Error(`Please wait, ${uploadingTypes.length} file(s) are still uploading...`);
       }
 
       const allUrls = Object.values(urls).filter(url => !!url);
@@ -337,7 +350,7 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({ isOpen, 
               )}
             </div>
 
-            {/* Footer */}
+    {/* Footer */}
             {!success && (
               <div className="p-6 border-t border-white/5 bg-[#12131a] flex gap-4">
                 <button 
@@ -348,13 +361,18 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({ isOpen, 
                 </button>
                 <button 
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || Object.entries(files).some(([type, f]) => f !== null && !urls[type])}
                   className="flex-[2] py-3.5 bg-neon-green hover:bg-neon-green/90 text-black font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(0,255,135,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Uploading & Processing...
+                      Sending Report...
+                    </>
+                  ) : Object.entries(files).some(([type, f]) => f !== null && !urls[type]) ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Uploading Files...
                     </>
                   ) : (
                     <>
