@@ -164,7 +164,15 @@ async function startServer() {
     }
   });
 
-  // 5. Auth test route
+  // 5. Cloudinary Config Endpoint
+  app.get("/api/config/cloudinary", (req, res) => {
+    res.json({
+      cloudName: process.env.VITE_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME,
+      uploadPreset: process.env.VITE_CLOUDINARY_UPLOAD_PRESET || process.env.CLOUDINARY_UPLOAD_PRESET
+    });
+  });
+
+  // 6. Auth test route
   app.post("/api/auth/register", requireAuth, async (req, res) => {
     try {
       const authUser = (req as any).user;

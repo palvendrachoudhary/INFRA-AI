@@ -7,8 +7,22 @@ export const uploadToCloudinary = async (
   file: File,
   onProgress?: (progress: number) => void
 ): Promise<string> => {
-  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+  // Fetch config from server first to ensure we have the latest secrets in production
+  let cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  let uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+  try {
+    const configRes = await fetch("/api/config/cloudinary");
+    if (configRes.ok) {
+      const config = await configRes.json();
+      if (config.cloudName && config.uploadPreset) {
+        cloudName = config.cloudName;
+        uploadPreset = config.uploadPreset;
+      }
+    }
+  } catch (err) {
+    console.warn("[Cloudinary] Could not fetch config from server, using local env fallback");
+  }
 
   if (!cloudName || !uploadPreset) {
     console.error("Cloudinary credentials missing. Falling back to dummy URL for demo.");
