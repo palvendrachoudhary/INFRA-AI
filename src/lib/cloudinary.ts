@@ -13,15 +13,20 @@ export const uploadToCloudinary = async (
 
   try {
     const configRes = await fetch("/api/config/cloudinary");
-    if (configRes.ok) {
+    const contentType = configRes.headers.get("content-type");
+    
+    if (configRes.ok && contentType && contentType.includes("application/json")) {
       const config = await configRes.json();
       if (config.cloudName && config.uploadPreset) {
         cloudName = config.cloudName;
         uploadPreset = config.uploadPreset;
+        console.log("[Cloudinary] Config fetched from server successfully");
       }
+    } else {
+      console.warn(`[Cloudinary] Server config returned ${configRes.status} (${contentType}). Using local env fallback.`);
     }
   } catch (err) {
-    console.warn("[Cloudinary] Could not fetch config from server, using local env fallback");
+    console.warn("[Cloudinary] Could not fetch config from server, using local env fallback:", err);
   }
 
   if (!cloudName || !uploadPreset) {
